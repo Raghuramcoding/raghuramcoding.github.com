@@ -10,40 +10,21 @@
             background-color: black; color: white;
             font-family: Arial, sans-serif; overflow: hidden;
         }
-
-        #effect-canvas {
-            position: fixed; top: 0; left: 0;
-            width: 100%; height: 100%; z-index: 1;
-        }
-
+        #effect-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
         #ui-layer {
             position: relative; z-index: 2;
             display: flex; flex-direction: column;
             align-items: center; justify-content: center;
             height: 100vh; text-align: center;
         }
-
         .screen { display: none; }
         .active { display: flex; flex-direction: column; align-items: center; }
-
-        button {
-            width: 300px; padding: 10px; margin: 5px;
-            font-size: 18px; cursor: pointer;
-        }
-
-        button:disabled {
-            background-color: #333; color: #777; cursor: not-allowed;
-        }
-
-        input {
-            font-size: 24px; width: 100px; text-align: center;
-            margin: 10px; border-radius: 5px;
-        }
-
+        button { width: 300px; padding: 10px; margin: 5px; font-size: 18px; cursor: pointer; }
+        button:disabled { background-color: #333; color: #777; cursor: not-allowed; }
+        input { font-size: 24px; width: 100px; text-align: center; margin: 10px; border-radius: 5px; }
         .trophy-row { display: flex; gap: 15px; margin-bottom: 20px; }
         .bronze { color: #cd7f32; } .silver { color: #c0c0c0; }
         .gold { color: #ffd700; } .platinum { color: #e5e4e2; }
-
         #hearts { color: red; font-size: 30px; margin: 10px; }
     </style>
 </head>
@@ -53,24 +34,18 @@
 
 <div id="ui-layer">
     <div id="menu-screen" class="screen active">
-        <h1>WELCOME TO THE NUMBER GUESSING GAME!</h1>
-        <p>Choose your difficulty level:</p>
-        
+        <h1>NUMBER GUESSING GAME</h1>
         <div class="trophy-row">
-            <span class="bronze">🥉 Bronze: <span id="count-bronze">0</span></span>
-            <span class="silver">🥈 Silver: <span id="count-silver">0</span></span>
-            <span class="gold">🥇 Gold: <span id="count-gold">0</span></span>
-            <span class="platinum">🏆 Platinum: <span id="count-platinum">0</span></span>
+            <span class="bronze">🥉: <span id="count-bronze">0</span></span>
+            <span class="silver">🥈: <span id="count-silver">0</span></span>
+            <span class="gold">🥇: <span id="count-gold">0</span></span>
+            <span class="platinum">🏆: <span id="count-platinum">0</span></span>
         </div>
-
-        <button onclick="startGame('easy', 25, 20)">Easy (1-25, 20 attempts)</button>
-        <button onclick="startGame('medium', 50, 10)">Medium (1-50, 10 attempts)</button>
-        <button onclick="startGame('hard', 100, 5)">Hard (1-100, 5 attempts)</button>
+        <button onclick="startGame('easy', 25, 20)">Easy (1-25)</button>
+        <button onclick="startGame('medium', 50, 10)">Medium (1-50)</button>
+        <button onclick="startGame('hard', 100, 5)">Hard (1-100)</button>
         <button id="btn-platinum" disabled onclick="startGame('platinum', 1000, 100)">Platinum (Locked)</button>
-        
-        <div style="margin-top: 20px;">
-            <button style="width: 145px;" onclick="resetTrophies()">Reset Trophies</button>
-        </div>
+        <button style="margin-top:20px; width:150px; font-size:12px;" onclick="resetTrophies()">Reset All</button>
     </div>
 
     <div id="game-screen" class="screen">
@@ -78,30 +53,27 @@
         <div id="hearts"></div>
         <p id="attempts-text"></p>
         <p id="feedback"></p>
-        <input type="number" id="guess-input" placeholder="0">
-        <div>
-            <button onclick="checkGuess()">Submit Guess</button>
-            <button onclick="showMenu()">Change Difficulty</button>
-        </div>
+        <input type="number" id="guess-input">
+        <button onclick="checkGuess()">Submit Guess</button>
+        <button onclick="showMenu()">Back to Menu</button>
     </div>
 </div>
 
 <script>
-    // FIXED: Starting gold is now 0 so Platinum stays locked
-    let trophies = JSON.parse(localStorage.getItem('guessGameTrophies')) || {bronze:0, silver:0, gold:0, platinum:0};
-    let secret = 0;
-    let attempts = 0;
-    let maxAttempts = 0;
-    let currentDiff = '';
-    let maxNum = 0;
+    // This loads your trophies or starts them at 0
+    let trophies = {bronze:0, silver:0, gold:0, platinum:0};
+    try {
+        const saved = localStorage.getItem('guessGameTrophies');
+        if (saved) trophies = JSON.parse(saved);
+    } catch (e) { console.log("Saving is blocked in this browser."); }
 
+    let secret, attempts, maxAttempts, currentDiff, maxNum;
     const canvas = document.getElementById('effect-canvas');
     const ctx = canvas.getContext('2d');
-    let particles = [];
-    let effectMode = 'none';
+    let particles = [], effectMode = 'none';
 
     function save() {
-        localStorage.setItem('guessGameTrophies', JSON.stringify(trophies));
+        try { localStorage.setItem('guessGameTrophies', JSON.stringify(trophies)); } catch(e) {}
         updateMenu();
     }
 
@@ -110,24 +82,9 @@
         document.getElementById('count-silver').innerText = trophies.silver;
         document.getElementById('count-gold').innerText = trophies.gold;
         document.getElementById('count-platinum').innerText = trophies.platinum;
-        
         const platBtn = document.getElementById('btn-platinum');
-        // Unlocks only if you have at least 1 Gold trophy
-        if (trophies.gold > 0) {
-            platBtn.disabled = false;
-            platBtn.innerText = "Platinum (1-1000, 100 attempts)";
-        } else {
-            platBtn.disabled = true;
-            platBtn.innerText = "Platinum (Locked)";
-        }
-    }
-
-    function resetTrophies() {
-        if(confirm("Are you sure you want to reset all trophies?")) {
-            trophies = {bronze:0, silver:0, gold:0, platinum:0};
-            save();
-            updateMenu();
-        }
+        platBtn.disabled = trophies.gold < 1;
+        platBtn.innerText = trophies.gold < 1 ? "Platinum (Locked)" : "Platinum (1-1000)";
     }
 
     function showMenu() {
@@ -137,38 +94,69 @@
         updateMenu();
     }
 
-    function startGame(diff, max, tries) {
-        currentDiff = diff;
-        maxNum = max;
-        maxAttempts = tries;
-        attempts = 0;
-        
-        let high = Math.floor(max / 10) * 10;
-        secret = (Math.floor(Math.random() * (high / 10)) + 1) * 10;
+    function resetTrophies() {
+        if(confirm("Reset all your trophies?")) {
+            trophies = {bronze:0, silver:0, gold:0, platinum:0};
+            save();
+        }
+    }
 
+    function startGame(diff, max, tries) {
+        currentDiff = diff; maxNum = max; maxAttempts = tries; attempts = 0;
+        secret = (Math.floor(Math.random() * (Math.floor(max/10))) + 1) * 10;
         document.getElementById('game-info').innerText = `Guess 1 to ${max}`;
         document.getElementById('feedback').innerText = '';
         document.getElementById('guess-input').value = '';
-        updateGameUI();
-
         document.getElementById('menu-screen').className = 'screen';
         document.getElementById('game-screen').className = 'screen active';
+        updateGameUI();
     }
 
     function updateGameUI() {
-        document.getElementById('hearts').innerText = "❤️".repeat(maxAttempts - attempts);
+        document.getElementById('hearts').innerText = "❤️".repeat(Math.max(0, maxAttempts - attempts));
         document.getElementById('attempts-text').innerText = `Attempts: ${attempts}/${maxAttempts}`;
     }
 
     function checkGuess() {
         let guess = parseInt(document.getElementById('guess-input').value);
         if (isNaN(guess)) return;
-
         attempts++;
         updateGameUI();
-
         if (guess === secret) {
-            alert(`🎉 CORRECT! The number was ${secret}`);
-            awardTrophy();
+            alert("🎉 YOU GOT IT!");
+            trophies[currentDiff]++;
+            save();
             showMenu();
         } else if (attempts >= maxAttempts) {
+            alert("😢 Out of tries! It was " + secret);
+            showMenu();
+        } else {
+            let diff = Math.abs(guess - secret);
+            effectMode = diff <= (maxNum * 0.2) ? 'fire' : 'snow';
+            document.getElementById('feedback').innerText = guess < secret ? "Try HIGHER" : "Try LOWER";
+        }
+    }
+
+    function animate() {
+        canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (effectMode !== 'none' && Math.random() < 0.2) {
+            particles.push({
+                x: Math.random() * canvas.width,
+                y: effectMode === 'fire' ? canvas.height : 0,
+                v: Math.random() * 2 + 1,
+                c: effectMode === 'fire' ? 'orange' : 'white'
+            });
+        }
+        particles.forEach((p, i) => {
+            ctx.fillStyle = p.c; ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, 7); ctx.fill();
+            p.y += effectMode === 'fire' ? -p.v : p.v;
+            if (p.y < 0 || p.y > canvas.height) particles.splice(i, 1);
+        });
+        requestAnimationFrame(animate);
+    }
+    updateMenu();
+    animate();
+</script>
+</body>
+</html>
