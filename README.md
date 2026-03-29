@@ -1,5 +1,5 @@
 # raghuramcoding.github.com
-this is my  number guessing game that i spent 1/4 of a year working on.You can find the orignal python version and more versions at https://github.com/Raghuramcoding/mindnumbingnumberguessinggame.py.
+this is my  number guessing game that i spent 1/4 of a year working on.You can find the orignal python version and more versions at [visit repo full of versions] (https://github.com/Raghuramcoding/mindnumbingnumberguessinggame.py).
 <!DOCTYPE html>
 <html lang="en">
 <head>
